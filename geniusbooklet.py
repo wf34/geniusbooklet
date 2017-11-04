@@ -18,18 +18,25 @@ tmp_dir_ = '/tmp/geniusbooklet'
 class song:
     def __init__(self):
         self.chunks = []
-        self.commetaries = {}
+        self.commentaries = {}
 
 
     def add_chunk_with_commentary(self, chunk, commentary = None):
+        assert isinstance(chunk, str)
         current_id = len(self.chunks)
         self.chunks.append(chunk)
-        self.commetaries[current_id] = commentary
+        if commentary:
+            assert isinstance(commentary, tuple) and len(commentary) == 3
+            self.commentaries[current_id] = commentary
 
 
     def __str__(self):
+        s = ''
         for i, c in enumerate(self.chunks):
-            print(c[:10], self.commetaries[i][0][:10])
+            s += c[:10]
+            s += self.commentaries[i][0][:10] if i in self.commentaries.keys() else '//'
+            s += '\n'
+        return s
 
 
 def parse_chunk(node):

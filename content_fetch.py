@@ -7,7 +7,7 @@ import requests
 
 random.seed(34)
 
-def insert_random_delay(f, low = 5.005, high = 10.5):
+def insert_random_delay(f, low = 0.005, high = 0.5):
     def wrapper(*args, **kwargs):
         time.sleep(random.uniform(low, high))
         return f(*args, **kwargs)
@@ -16,7 +16,7 @@ def insert_random_delay(f, low = 5.005, high = 10.5):
 
 @insert_random_delay
 def get_page(url):
-    HEADLESS_GOOGLE_CMD = 'google-chrome-stable --headless --disable-gpu --dump-dom'
+    HEADLESS_GOOGLE_CMD = 'google-chrome-stable --headless --disable-gpu --waituntil=networkidle2 --dump-dom'
     target = '{} {}'.format(HEADLESS_GOOGLE_CMD, url)
     return subprocess.getoutput(target)
 
