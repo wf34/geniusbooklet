@@ -2,7 +2,9 @@
 
 import sys
 import os
+import shutil
 import subprocess
+
 import lxml.html as html
 import lxml.etree as etree
 
@@ -19,14 +21,15 @@ class song:
         self.commetaries = {}
 
 
-    def add_chunk_with_commentary(chunk, commentary = None):
+    def add_chunk_with_commentary(self, chunk, commentary = None):
         current_id = len(self.chunks)
         self.chunks.append(chunk)
         self.commetaries[current_id] = commentary
 
 
     def __str__(self):
-
+        for i, c in enumerate(self.chunks):
+            print(c[:10], self.commetaries[i][0][:10])
 
 
 def parse_chunk(node):
@@ -57,8 +60,8 @@ def parse_commentary(url):
     root = html.fromstring(output)
     COMMENTARY_XPATH = "//div[@class='annotation_sidebar_unit']/annotation/standard-rich-content/div[@class='rich_text_formatting']"
     comment_html = root.xpath(COMMENTARY_XPATH)
-    assert len(comment_html) == 1
-    parts = [node.text]
+    assert len(comment_html) == 1, len(comment_html)
+    parts = [root.text]
     image_paths = []
     youtube_ids = []
     for c in comment_html[0].getchildren():
@@ -69,7 +72,7 @@ def parse_commentary(url):
         elif c.tag == 'embedly-youtube':
             youtube_ids.append(c.attrib['video-id'])
 
-    parts = [node.tail]
+    parts = [root.tail]
     parts = list(filter(None, parts))
     return ''.join(parts), image_paths, youtube_ids
  
@@ -92,11 +95,12 @@ def parse_song(song_url):
         else:
             commentary = None
         s.add_chunk_with_commentary(text, commentary)
+    return s
 
 
 def main():
     shutil.rmtree(tmp_dir_, ignore_errors=True)
-    os.mkdirs(tmp_dir_)
+    os.mkdir(tmp_dir_)
     aes = 'https://genius.com/Aesop-rock-none-shall-pass-lyrics'
     john = 'https://genius.com/Johnyboy-the-demons-lyrics'
     eag = 'https://genius.com/Eagles-hotel-california-lyrics'

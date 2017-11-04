@@ -2,15 +2,17 @@ import subprocess
 import random
 import time
 import os
-import wget
+import shutil
+import requests
 
 random.seed(34)
 
-def insert_random_delay(f, low = 0.005, high = 0.5):
+def insert_random_delay(f, low = 5.005, high = 10.5):
     def wrapper(*args, **kwargs):
         time.sleep(random.uniform(low, high))
         return f(*args, **kwargs)
     return wrapper
+
 
 @insert_random_delay
 def get_page(url):
@@ -21,7 +23,11 @@ def get_page(url):
 
 @insert_random_delay
 def get_image(url, destination):
-    wget.download(url, out = destination)
+    r = requests.get(settings.STATICMAP_URL.format(**url), stream=True)
+    if r.status_code == 200:
+        with open(destination, 'wb') as f:
+            r.raw.decode_content = True
+            shutil.copyfileobj(r.raw, f)
     assert os.path.isfile(destination)
 
 
