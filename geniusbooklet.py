@@ -2,6 +2,7 @@
 
 import sys
 import os
+import pickle
 import shutil
 import subprocess
 
@@ -10,33 +11,11 @@ import lxml.etree as etree
 
 import requests.compat
 
+import song as s
 import content_fetch as cf
+import tex_conv as tc
 
 tmp_dir_ = '/tmp/geniusbooklet'
-
-
-class song:
-    def __init__(self):
-        self.chunks = []
-        self.commentaries = {}
-
-
-    def add_chunk_with_commentary(self, chunk, commentary = None):
-        assert isinstance(chunk, str)
-        current_id = len(self.chunks)
-        self.chunks.append(chunk)
-        if commentary:
-            assert isinstance(commentary, tuple) and len(commentary) == 3
-            self.commentaries[current_id] = commentary
-
-
-    def __str__(self):
-        s = ''
-        for i, c in enumerate(self.chunks):
-            s += c[:10]
-            s += self.commentaries[i][0][:10] if i in self.commentaries.keys() else '//'
-            s += '\n'
-        return s
 
 
 def parse_chunk(node):
@@ -91,29 +70,37 @@ def parse_song(song_url):
     LYRICS_XPATH = "//div[@class='lyrics']/section/p"
     lyrics_html = root.xpath(LYRICS_XPATH)
     assert len(lyrics_html) == 1
-    s = song()
+    sng = s.song()
     for c in lyrics_html[0].getchildren():
         text, link = parse_chunk(c)
-        print(text, end='')
+        #print(text, end='')
         if link:
-            print('[{}]'.format(link), end='')
+            #print('[{}]'.format(link), end='')
             commentary = parse_commentary(
                 requests.compat.urljoin(song_url, link))
         else:
             commentary = None
-        s.add_chunk_with_commentary(text, commentary)
-    return s
+        sng.add_chunk_with_commentary(text, commentary)
+    return sng
 
 
 def main():
     shutil.rmtree(tmp_dir_, ignore_errors=True)
     os.mkdir(tmp_dir_)
-    aes = 'https://genius.com/Aesop-rock-none-shall-pass-lyrics'
-    john = 'https://genius.com/Johnyboy-the-demons-lyrics'
-    eag = 'https://genius.com/Eagles-hotel-california-lyrics'
-    song = parse_song(aes)
-    print(song)
-    shutil.rmtree(tmp_dir_) 
+    if False:
+        aes = 'https://genius.com/Aesop-rock-none-shall-pass-lyrics'
+        john = 'https://genius.com/Johnyboy-the-demons-lyrics'
+        eag = 'https://genius.com/Eagles-hotel-california-lyrics'
+        song = parse_song(aes)
+        #print(song)
+        with open('/tmp/song.pcl', 'wb') as the_file:
+            pickle.dump(song, the_file, pickle.HIGHEST_PROTOCOL)
+    else:
+        with open('/home/wf34/projects/genius_booklet/song.pcl', 'rb') as the_file:
+            sng = pickle.load(the_file)
+            song_tex = tc.build_tex(sng)
+            tc.render(song_tex, tmp_dir_, '/tmp/song.pdf')
+    #shutil.rmtree(tmp_dir_) 
     
 
 if '__main__' == __name__:
