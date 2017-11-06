@@ -100,7 +100,7 @@ def main():
             sng = pickle.load(the_file)
             song_tex = tc.build_tex(sng)
             tc.render(song_tex, tmp_dir_, '/tmp/song.pdf')
-    #shutil.rmtree(tmp_dir_) 
+    #shutil.rmtree(tmp_dir_)
     
 
 if '__main__' == __name__:
