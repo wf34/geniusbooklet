@@ -22,7 +22,7 @@ class song:
         if p == 'title':
             return 'XXX'
         elif p == 'lyrics':
-            lchunks = [self.latexify(c) for c in self.chunks]
+            lchunks = [self.latexify(c, 'for_normal_text', False) for c in self.chunks]
             return functools.reduce(lambda res, x : ''.join([res, x]), lchunks, '')
         elif p == 'commented_lyrics':
             return self.build_commented_table()
@@ -40,9 +40,9 @@ class song:
     def build_commented_table(self):
         table = ''
         header = '''\\begin{center}
-                    \\begin{longtable} {Rp{2cm}Rp{10cm}} \\toprule
+                    \\begin{longtable}{p{6cm}p{10cm}} \\hline \\ 
                  '''
-        footer = ''' \\bottomrule \\end{longtable}
+        footer = '''\\end{longtable}
                     \\end{center}
                  '''
         table += header
@@ -53,7 +53,7 @@ class song:
 
 
     def build_commetary_row(self, ci):
-        c = self.latexify(self.chunks[ci], True)
+        c = self.latexify(self.chunks[ci], 'for_cell')
         is_empty = not any([all([char != x for x in ['\\', ' ']]) for char in c])
         if is_empty:
             assert ci not in self.commentaries.keys()
@@ -61,20 +61,27 @@ class song:
         
         comm_text = ''
         if ci in self.commentaries.keys():
-            comm_text = self.latexify(self.commentaries[ci][0], True)
+            comm_text = self.latexify(self.commentaries[ci][0], 'no_breaks')
         else:
             comm_text = '\\phantom{.}'
 
-        return '\makecell[l]{{{}}} & \makecell[l]{{{}}} \\\\ \n'.format(c, comm_text)
+        return '\makecell[l]{{{}}} & {} \\ \\hline \n'.format(c, comm_text)
 
 
-    def latexify(self, text, cell = False):
-        if cell:
+
+    def latexify(self, text, line_break_style, is_strip = True):
+        if line_break_style == 'for_cell':
             text = text.replace('\n', '\\\\')
             if text.startswith('\\\\'):
                 text = text[2:]
-            return text
+        elif line_break_style == 'for_normal_text':
+            text = text.replace('\n', '~\\newline \n')
+        elif line_break_style == 'no_breaks':
+            text = text.replace('\n', ' ')
         else:
-            return text.replace('\n', '~\\newline \n')
+            assert False, 'unreachable'
+        if is_strip:
+            text = text.strip('\\\n ')
+        return text
         
 
