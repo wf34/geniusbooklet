@@ -39,6 +39,33 @@ def parse_chunk(node):
     return ''.join(parts), link
 
 
+def depth_first_search(root, commentary):
+    if 0 == len(root.getchildren()):
+        return commentary
+
+    def append_conditionally(l, add):
+        if add is not None:
+            l.append(add)
+
+    def extend_conditionally(l, la):
+        for a in la:
+            append_conditionally(l, a)
+
+    append_conditionally(commentary['text'], root.text)
+    for c in root.getchildren():
+        if c.tag == 'img':
+            img_url = c.attrib['src']
+            img_dst = os.path.join(tmp_dir_, img_url.split('/')[-1])
+            cf.get_image(img_url, img_dst)
+            commentary['img'].append(img_dst)
+        elif c.tag == 'embedly-youtube':
+            commentary['yt'].append(c.attrib['video-id'])
+        else:
+            extend_conditionally(commentary['text'], [c.text, c.tail])
+            commentary = depth_first_search(c, commentary)
+    return commentary
+
+
 def parse_commentary(url):
     output = cf.get_page(url)
     with open('/tmp/com1.txt', 'w') as tf:
@@ -47,20 +74,14 @@ def parse_commentary(url):
     COMMENTARY_XPATH = "//div[@class='annotation_sidebar_unit']/annotation/standard-rich-content/div[@class='rich_text_formatting']"
     comment_html = root.xpath(COMMENTARY_XPATH)
     assert len(comment_html) == 1, len(comment_html)
-    parts = [root.text]
-    image_paths = []
-    youtube_ids = []
-    for c in comment_html[0].getchildren():
-        parts.extend([c.text, c.tail])
-        if c.tag == 'img':
-            img_url = c.attrib['src']
-            cf.get_image(img_url, os.path.join(tmp_dir_, img_url.split('/')[-1]))
-        elif c.tag == 'embedly-youtube':
-            youtube_ids.append(c.attrib['video-id'])
-
-    parts = [root.tail]
-    parts = list(filter(None, parts))
-    return ''.join(parts), image_paths, youtube_ids
+    print('Comment: ', etree.tounicode(comment_html[0]))
+    commentary = {'text' : [], 'img' : [], 'yt' : []}
+    commentary = depth_first_search(comment_html[0], commentary)
+    for k,v in commentary.items():
+        assert all([x is not None for x in v]), k
+    parts = ''.join(commentary['text'])
+    print('Final Comment', parts)
+    return parts, commentary['img'], commentary['yt']
  
 
 def parse_song(song_url):
@@ -73,9 +94,7 @@ def parse_song(song_url):
     sng = s.song()
     for c in lyrics_html[0].getchildren():
         text, link = parse_chunk(c)
-        #print(text, end='')
         if link:
-            #print('[{}]'.format(link), end='')
             commentary = parse_commentary(
                 requests.compat.urljoin(song_url, link))
         else:
@@ -92,8 +111,7 @@ def main():
         john = 'https://genius.com/Johnyboy-the-demons-lyrics'
         eag = 'https://genius.com/Eagles-hotel-california-lyrics'
         song = parse_song(aes)
-        #print(song)
-        with open('/tmp/song.pcl', 'wb') as the_file:
+        with open('/home/wf34/projects/genius_booklet/song.pcl', 'wb') as the_file:
             pickle.dump(song, the_file, pickle.HIGHEST_PROTOCOL)
     else:
         with open('/home/wf34/projects/genius_booklet/song.pcl', 'rb') as the_file:
