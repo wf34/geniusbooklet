@@ -5,14 +5,15 @@ import functools
 class song:
     def __init__(self):
         self.chunks = []
-        self.commentaries = {}
+        self.commentaries = dict([])
 
 
     def add_chunk_with_commentary(self, chunk, commentary = None):
         assert isinstance(chunk, str)
         current_id = len(self.chunks)
         self.chunks.append(chunk)
-        if commentary:
+        if commentary is not None:
+            print('Adding really')
             assert isinstance(commentary, tuple) and len(commentary) == 3
             self.commentaries[current_id] = commentary
 
@@ -39,9 +40,9 @@ class song:
     def build_commented_table(self):
         table = ''
         header = '''\\begin{center}
-                    \\begin{longtable} { l l }
+                    \\begin{longtable} {Rp{2cm}Rp{10cm}} \\toprule
                  '''
-        footer = '''\\end{longtable}
+        footer = ''' \\bottomrule \\end{longtable}
                     \\end{center}
                  '''
         table += header
@@ -55,23 +56,24 @@ class song:
         c = self.latexify(self.chunks[ci], True)
         is_empty = not any([all([char != x for x in ['\\', ' ']]) for char in c])
         if is_empty:
-            print(c, 'was filtered out')
             assert ci not in self.commentaries.keys()
             return ''
-        if c.startswith('\\\\'):
-            c = c[2:]
+        
         comm_text = ''
         if ci in self.commentaries.keys():
-            comm_text = 'have comm;'
+            comm_text = self.latexify(self.commentaries[ci][0], True)
         else:
-            comm_text = 'no comm'
+            comm_text = '\\phantom{.}'
 
-        return '\makecell[l]{{{}}} & {} \\\\ \n'.format(c, comm_text)
+        return '\makecell[l]{{{}}} & \makecell[l]{{{}}} \\\\ \n'.format(c, comm_text)
 
 
     def latexify(self, text, cell = False):
         if cell:
-            return text.replace('\n', '\\\\')
+            text = text.replace('\n', '\\\\')
+            if text.startswith('\\\\'):
+                text = text[2:]
+            return text
         else:
             return text.replace('\n', '~\\newline \n')
         
