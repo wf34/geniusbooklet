@@ -29,7 +29,6 @@ def build_tex(sng):
 
 def render(tex, interm_dir, dst):
     assert isinstance(tex, str)
-    print(tex)
     assert os.path.isdir(interm_dir)
     dst_dir = os.path.dirname(dst)
     assert os.path.isdir(dst_dir)
