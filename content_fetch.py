@@ -23,7 +23,7 @@ def get_page(url):
 
 @insert_random_delay
 def get_image(url, destination):
-    r = requests.get(settings.STATICMAP_URL.format(**url), stream=True)
+    r = requests.get(url, stream=True)
     if r.status_code == 200:
         with open(destination, 'wb') as f:
             r.raw.decode_content = True
