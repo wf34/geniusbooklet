@@ -31,7 +31,7 @@ def get_image(url, destination):
     assert os.path.isfile(destination)
 
 
-@insert_random_delay
-def get_youtube_video():
-    assert False
-
+def get_youtube_thumbnail(yt_vid_code, destination):
+    yt_url_template = 'https://img.youtube.com/vi/{}/default.jpg'
+    yt_pic_url = yt_url_template.format(yt_vid_code)
+    get_image(yt_pic_url, destination)
