@@ -15,8 +15,6 @@ import song as s
 import content_fetch as cf
 import tex_conv as tc
 
-tmp_dir_ = '/tmp/geniusbooklet'
-
 
 def parse_chunk(node):
     link = None if node.tag != 'a' else node.attrib['href']
@@ -55,7 +53,7 @@ def depth_first_search(root, commentary):
     for c in root.getchildren():
         if c.tag == 'img':
             img_url = c.attrib['src']
-            img_dst = os.path.join(tmp_dir_, img_url.split('/')[-1])
+            img_dst = os.path.join(s.tmp_dir_, img_url.split('/')[-1])
             cf.get_image(img_url, img_dst)
             commentary['img'].append(img_dst)
         elif c.tag == 'embedly-youtube':
@@ -74,13 +72,11 @@ def parse_commentary(url):
     COMMENTARY_XPATH = "//div[@class='annotation_sidebar_unit']/annotation/standard-rich-content/div[@class='rich_text_formatting']"
     comment_html = root.xpath(COMMENTARY_XPATH)
     assert len(comment_html) == 1, len(comment_html)
-    print('Comment: ', etree.tounicode(comment_html[0]))
     commentary = {'text' : [], 'img' : [], 'yt' : []}
     commentary = depth_first_search(comment_html[0], commentary)
     for k,v in commentary.items():
         assert all([x is not None for x in v]), k
     parts = ''.join(commentary['text'])
-    print('Final Comment', parts)
     return parts, commentary['img'], commentary['yt']
  
 
@@ -117,8 +113,8 @@ def main():
         with open('/home/wf34/projects/genius_booklet/song.pcl', 'rb') as the_file:
             sng = pickle.load(the_file)
             song_tex = tc.build_tex(sng)
-            tc.render(song_tex, tmp_dir_, '/tmp/song.pdf')
-    #shutil.rmtree(tmp_dir_)
+            tc.render(song_tex, s.tmp_dir_, '/tmp/song.pdf')
+    #shutil.rmtree(s.tmp_dir_)
     
 
 if '__main__' == __name__:
