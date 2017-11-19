@@ -12,7 +12,7 @@ def get_random_string(l = 20):
 
 
 def fill_in_placeholders(template, sng):
-    placeholders = ['title', 'lyrics', 'commented_lyrics']
+    placeholders = ['tmp_dir', 'title', 'lyrics', 'commented_lyrics']
     for p in placeholders:
         template = template.replace('%' + p, sng.get_value(p))
     return template
