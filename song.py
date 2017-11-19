@@ -10,7 +10,9 @@ tmp_dir_ = '/tmp/geniusbooklet'
 def build_latex_image_code_(image_path):
     assert os.path.isfile(image_path)
     image_name = os.path.basename(image_path)
-    return '\\includegraphics[width={{}}\linewidth]{{{}}}'.format(image_name)
+    if any([image_name.lower().endswith(x) for x in ['.jpg', '.png']]):
+        image_name = image_name[:-4]
+    return '\\includegraphics[height=0.1\\textheight,width={}\\linewidth,keepaspectratio]{{{' + image_name + '}}}'
 
 
 def build_latex_image_code(image_path, href = None):
@@ -22,7 +24,7 @@ def build_latex_image_code(image_path, href = None):
 
 
 def build_yt_image(yt_vid_code):
-    th_dst = os.path.join(s.tmp_dir_, yt_vid_code + '.png')
+    th_dst = os.path.join(tmp_dir_, yt_vid_code + '.png')
     cf.get_youtube_thumbnail(yt_vid_code, th_dst)
     vid_url = 'https://www.youtube.com/watch?v={}'.format(yt_vid_code)
     return build_latex_image_code(th_dst, vid_url)
@@ -34,16 +36,27 @@ def build_mosaic_latex_code(pics):
     width = min(3, len_)
     height = 1 if len_ <= width else len_ // width
     assert width * height >= len_
-    
     pic_codes = []
-    for hangler, pic_source in pics:
-        pic_tex_code = hangler(pic_source)
-        fixed_pic_tex_code = pic_tex_code.format(1. / width)
+    for handler, pic_source in pics:
+        pic_tex_code = handler(pic_source)
+        fixed_pic_tex_code = pic_tex_code.replace('{}', '{:.3f}'.format(1. / width))
+        print(fixed_pic_tex_code)
         pic_codes.append(fixed_pic_tex_code)
-    print(pic_codes)
-    mosaic_header = '\\begin{minipage}{10cm} \\begin{tabular}'
-    mosaic_footer = '\\end{minipage}' 
-    return 'YYY'
+    mosaic_header = \
+        '\\begin{minipage}{10cm} \\begin{tabular} { ' + ' '.join(['c'] * width) + ' }'
+    code = mosaic_header
+    for i, p in enumerate(pic_codes):
+        if i % width == width - 1:
+            separator = ' & '
+        elif i // width == height - 1:
+            separator = ''
+        else:
+            separator = ' \\\\ \n'
+        code += p
+        code += separator
+    mosaic_footer = '\\end{tabular} \\end{minipage} \n'
+    code += mosaic_footer
+    return code
 
 
 class song:
