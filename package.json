@@ -1,0 +1,22 @@
+{
+  "name": "genius_booklet",
+  "version": "1.0.0",
+  "description": "",
+  "main": "genius_booklet.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wf34/geniusbooklet.git"
+  },
+  "author": "wf34",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/wf34/geniusbooklet/issues"
+  },
+  "homepage": "https://github.com/wf34/geniusbooklet#readme",
+  "dependencies": {
+    "puppeteer": "^0.13.0"
+  }
+}
