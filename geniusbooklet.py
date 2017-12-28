@@ -53,11 +53,18 @@ def depth_first_search(root, commentary):
     for c in root.getchildren():
         if c.tag == 'img':
             img_url = c.attrib['src']
-            img_dst = os.path.join(s.tmp_dir_, img_url.split('/')[-1])
+            name = img_url.split('/')[-1]
+            print(img_url)
+            name = name if len(name) < 30 else name[-30:]
+            if not name.endswith('.png') and not name.endswith('.jpg'):
+                name = name + '.jpg'
+            img_dst = os.path.join(s.tmp_dir_, name)
             cf.get_image(img_url, img_dst)
             commentary['img'].append(img_dst)
         elif c.tag == 'embedly-youtube':
             commentary['yt'].append(c.attrib['video-id'])
+        #elif c.tag == 'a':
+        #    pass #for now, later -  save href ## NOT ENOGH FIX
         else:
             extend_conditionally(commentary['text'], [c.text, c.tail])
             commentary = depth_first_search(c, commentary)
@@ -65,6 +72,7 @@ def depth_first_search(root, commentary):
 
 
 def parse_commentary(url):
+    print(url)
     output = cf.get_page(url)
     with open('/tmp/com1.txt', 'w') as tf:
         tf.write(output)
@@ -100,13 +108,14 @@ def parse_song(song_url):
 
 
 def main():
-    shutil.rmtree(tmp_dir_, ignore_errors=True)
-    os.mkdir(tmp_dir_)
+    #shutil.rmtree(s.tmp_dir_, ignore_errors=True)
+    #os.mkdir(s.tmp_dir_)
     if False:
         aes = 'https://genius.com/Aesop-rock-none-shall-pass-lyrics'
         john = 'https://genius.com/Johnyboy-the-demons-lyrics'
         eag = 'https://genius.com/Eagles-hotel-california-lyrics'
-        song = parse_song(aes)
+        com = 'https://genius.com/Pulp-common-people-lyrics'
+        song = parse_song(com)
         with open('/home/wf34/projects/genius_booklet/song.pcl', 'wb') as the_file:
             pickle.dump(song, the_file, pickle.HIGHEST_PROTOCOL)
     else:

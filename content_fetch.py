@@ -28,7 +28,9 @@ def get_image(url, destination):
         with open(destination, 'wb') as f:
             r.raw.decode_content = True
             shutil.copyfileobj(r.raw, f)
-    assert os.path.isfile(destination)
+    
+    assert os.path.isfile(destination), destination
+    print('saved at', destination)
 
 
 def get_youtube_thumbnail(yt_vid_code, destination):
