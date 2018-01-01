@@ -7,7 +7,7 @@ global_page_handle = null
 
 function get_browser() {
   if (global_browser_handle == null) {
-    return puppeteer.launch({headless: false});
+    return puppeteer.launch();
   } else {
     return Promise.resolve(global_browser_handle);
   }
