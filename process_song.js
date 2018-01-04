@@ -4,17 +4,21 @@ const fs = require('fs');
 const sleep = require('sleep-promise');
 
 
-function handle_error(error_message) {
-  console.log('my error: ', error_message);
-  global_browser_handle.close();
-  throw new Error(error_message);
-}
-
 function query_inner_html(address, selector) {
-  return content_loader.load_page(address).then((content) => {
+ let this_page = null;
+  return content_loader.load_page(address)
+    .then(select_html)
+    .then(close_page);
+
+  function select_html(page) {
     console.log("got html");
-    return global_page_handle.$eval(selector, (el) => el.innerHTML)
-  });
+    this_page = page; 
+    return page.$eval(selector, (el) => el.innerHTML);
+  }
+  function close_page(x) {
+    return this_page.close()
+      .then(() => x);
+  }
 }
 
 
@@ -26,20 +30,13 @@ function build_annotations_list(lyrics_html) {
     link = link.startsWith('http') ? link : GENIUS_SITE + link
     links.push(link)
   });
-  // links = links.slice(0, 2); // TODO(wf34) remove list prune
   console.log('link to follow: ', links);
-  return global_page_handle.close().then(() => Promise.resolve(links));
+  return Promise.resolve(links);
 }
 
 
 function load_and_query_annotation(link) {
-  var annotation_html = "";
-  return query_inner_html(link, ANNOTATION_SELECTOR)
-    .then((x) => {
-      annotation_html = x;
-      global_page_handle.close(); 
-    })
-    .then(() => Promise.resolve(annotation_html));
+  return query_inner_html(link, ANNOTATION_SELECTOR);
 }
 
 function store_all_annotations(annotation_links) {
@@ -94,22 +91,37 @@ function parse_lyrics(lyrics) {
     $('body').append(tabled_song.html())
   }
   fs.writeFileSync(destination.slice(0, -4) + '.txt', $.html());
-  return global_page_handle.setContent($.html()).then(sleep(10000));
+  return Promise.resolve($.html());
 }
 
 
-function render() {
+function render(output_html, dst_filepath) {
   //TODO(wf34) fix when resolved https://github.com/GoogleChrome/puppeteer/issues/1278
-  // return global_page_handle.waitForNavigation({waitUntil: 'networkidle2' })
-  // .then(global_page_handle.pdf.bind(null, {path: destination, format: 'A4'}));
-  return global_page_handle.pdf({path: destination,
-                                 format: 'A4',
-                                 landscape : true });
+  // return page.waitForNavigation({waitUntil: 'networkidle2' })
+  // .then(page.pdf.bind(null, {path: destination, format: 'A4'}));
+  let this_page = null;
+  return content_loader.load_page('about:blank')
+    .then(set_content)
+    .then(sleep.bind(null, 30000))
+    .then(render_pdf)
+    .then(close_page);
+
+  function set_content(page) {
+    this_page = page;
+    return page.setContent(output_html)
+  }
+
+  function render_pdf() {
+    return this_page.pdf({path: destination,
+                          format: 'A4',
+                          landscape : true });
+  }
+  function close_page(x) {
+    return this_page.close()
+      .then(() => x);
+  }
 }
 
-function shutdown() {
-  global_browser_handle.close();
-}
 
 const args = process.argv;
 if (args.length < 4) {
@@ -124,10 +136,11 @@ const BODY_LYRICS_SELECTOR = "body > routable-page > ng-outlet > song-page > div
 const ANNOTATION_SELECTOR = "body > routable-page > ng-outlet > song-page > div > div > div.song_body.column_layout > div.column_layout-column_span.column_layout-column_span--secondary.u-top_margin.column_layout-flex_column > div.column_layout-flex_column-fill_column > annotation-sidebar > div.u-relative.nganimate-fade_slide_from_left > div:nth-child(2) > annotation > standard-rich-content > div";
 const annotations = [];
 
+
 query_inner_html(address, BODY_LYRICS_SELECTOR)
-  .then(build_annotations_list, handle_error)
-  .then(store_all_annotations, handle_error)
+  .then(build_annotations_list)
+  .then(store_all_annotations)
   .then(query_inner_html.bind(null, address, BODY_LYRICS_SELECTOR))
-  .then(parse_lyrics, handle_error)
-  .then(render, handle_error)
-  .then(shutdown)
+  .then(parse_lyrics)
+  .then(render)
+  .then(content_loader.shutdown)

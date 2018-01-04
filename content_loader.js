@@ -1,9 +1,7 @@
 const puppeteer = require('puppeteer');
 const sleep = require('sleep-promise');
 
-global_browser_handle = null
-global_page_handle = null
-
+global_browser_handle = null;
 
 function get_browser() {
   if (global_browser_handle == null) {
@@ -18,28 +16,23 @@ function instantiate_page(browser) {
   if (global_browser_handle == null) {
     global_browser_handle = browser;
   }
-  // if (global_page_handle == null) {
   return browser.newPage();
-  // } else {
-  //   return Promise.resolve(global_page_handle);
-  // }
 }
 
 
 function navigate_page(address, page) {
   console.log('now navigate to: ', address)
-  // if (global_page_handle == null) {
-    global_page_handle = page;
-  // }
-  return global_page_handle.goto(address, {
+  return page.goto(address, {
                    waitUntil: 'networkidle2',
                    timeout: 240000
-                 });
+                 })
+       .then(() => Promise.resolve(page));
 }
 
-function fetch_page_content(_) {
+function fetch_page_content(page) {
   console.log("Yay, page loaded");
-  return global_page_handle.content();
+  return page.content()
+    .then(() => Promise.resolve(page));
 }
 
 
@@ -49,4 +42,8 @@ module.exports.load_page = function(url) {
     .then(instantiate_page)
     .then(navigate_page.bind(null, url))
     .then(fetch_page_content)
+};
+
+module.exports.shutdown = function() {
+  return global_browser_handle.close();
 };
