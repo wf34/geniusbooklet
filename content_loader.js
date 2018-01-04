@@ -33,7 +33,7 @@ function navigate_page(address, page) {
   // }
   return global_page_handle.goto(address, {
                    waitUntil: 'networkidle2',
-                   timeout: 180000
+                   timeout: 240000
                  });
 }
 
