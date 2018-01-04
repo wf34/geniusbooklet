@@ -22,7 +22,7 @@ function query_inner_html(address, selector) {
 }
 
 
-function build_annotations_list(lyrics_html) {
+function build_annotation_urls_list(lyrics_html) {
   const $ = cheerio.load(lyrics_html)
   let links = [];
   $('a').each(function(i, el) {
@@ -39,7 +39,8 @@ function load_and_query_annotation(link) {
   return query_inner_html(link, ANNOTATION_SELECTOR);
 }
 
-function store_all_annotations(annotation_links) {
+function store_all_annotations(annotation_links, annotations) {
+  console.log(annotation_links);
   return annotation_links.reduce((promise, alink) => {
       return promise.then(() => load_and_query_annotation(alink).then((result) => annotations.push(result)))
     }, Promise.resolve());
@@ -49,7 +50,7 @@ function make_td(w, innards) {
   return '<td valign="top" style="width:' + w + '%;border-right:none;border-left:none;border-bottom:none;border-top:none">' + innards + '</td>';
 }
 
-function parse_lyrics(lyrics) {
+function form_song_output_html(lyrics, annotations) {
   const $ = cheerio.load(lyrics)
   $('a').each(function(i, el) {
     let p = $('<div>' + $(this).html() + '</div>');
@@ -90,15 +91,14 @@ function parse_lyrics(lyrics) {
     $('body').append('<br>')
     $('body').append(tabled_song.html())
   }
-  fs.writeFileSync(destination.slice(0, -4) + '.txt', $.html());
   return Promise.resolve($.html());
 }
 
 
 function render(output_html, dst_filepath) {
-  //TODO(wf34) fix when resolved https://github.com/GoogleChrome/puppeteer/issues/1278
-  // return page.waitForNavigation({waitUntil: 'networkidle2' })
-  // .then(page.pdf.bind(null, {path: destination, format: 'A4'}));
+  console.log('will store to ' + dst_filepath);
+  fs.writeFileSync(dst_filepath.slice(0, -4) + '.txt', output_html);
+  
   let this_page = null;
   return content_loader.load_page('about:blank')
     .then(set_content)
@@ -108,18 +108,34 @@ function render(output_html, dst_filepath) {
 
   function set_content(page) {
     this_page = page;
+    //TODO(wf34) fix when resolved https://github.com/GoogleChrome/puppeteer/issues/1278
+    // return page.waitForNavigation({waitUntil: 'networkidle2' })
+    // .then(page.pdf.bind(null, {path: destination, format: 'A4'}));
     return page.setContent(output_html)
   }
 
   function render_pdf() {
-    return this_page.pdf({path: destination,
+    return this_page.pdf({path: dst_filepath,
                           format: 'A4',
                           landscape : true });
   }
-  function close_page(x) {
-    return this_page.close()
-      .then(() => x);
+
+  function close_page() {
+    return this_page.close();
   }
+}
+
+
+function page_to_pdf(page_url, page_dst_path) {
+  let annotations = [];
+
+  return query_inner_html(page_url, BODY_LYRICS_SELECTOR)
+    .then(build_annotation_urls_list)
+    .then((urls) => store_all_annotations(urls, annotations))
+    .then(query_inner_html.bind(null, page_url, BODY_LYRICS_SELECTOR))
+    .then((html) => form_song_output_html(html, annotations))
+    .then((out_html) => render(out_html, page_dst_path))
+    .then(content_loader.shutdown);
 }
 
 
@@ -134,13 +150,5 @@ destination = args[3];
 const GENIUS_SITE = "https://genius.com";
 const BODY_LYRICS_SELECTOR = "body > routable-page > ng-outlet > song-page > div > div > div.song_body.column_layout > div.column_layout-column_span.column_layout-column_span--primary > div > defer-compile:nth-child(2) > lyrics > div > section > p";
 const ANNOTATION_SELECTOR = "body > routable-page > ng-outlet > song-page > div > div > div.song_body.column_layout > div.column_layout-column_span.column_layout-column_span--secondary.u-top_margin.column_layout-flex_column > div.column_layout-flex_column-fill_column > annotation-sidebar > div.u-relative.nganimate-fade_slide_from_left > div:nth-child(2) > annotation > standard-rich-content > div";
-const annotations = [];
 
-
-query_inner_html(address, BODY_LYRICS_SELECTOR)
-  .then(build_annotations_list)
-  .then(store_all_annotations)
-  .then(query_inner_html.bind(null, address, BODY_LYRICS_SELECTOR))
-  .then(parse_lyrics)
-  .then(render)
-  .then(content_loader.shutdown)
+page_to_pdf(address, destination);
