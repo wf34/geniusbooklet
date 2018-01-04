@@ -1,6 +1,7 @@
 const content_loader = require('./content_loader');
 const cheerio = require('cheerio')
 const fs = require('fs');
+const sleep = require('sleep-promise');
 
 
 function handle_error(error_message) {
@@ -25,7 +26,7 @@ function build_annotations_list(lyrics_html) {
     link = link.startsWith('http') ? link : GENIUS_SITE + link
     links.push(link)
   });
-  links = links.slice(0, 2); // TODO(wf34) remove list prune
+  // links = links.slice(0, 2); // TODO(wf34) remove list prune
   console.log('link to follow: ', links);
   return global_page_handle.close().then(() => Promise.resolve(links));
 }
@@ -47,6 +48,10 @@ function store_all_annotations(annotation_links) {
     }, Promise.resolve());
 }
 
+function make_td(w, innards) {
+  return '<td valign="top" style="width:' + w + '%;border-right:none;border-left:none;border-bottom:none;border-top:none">' + innards + '</td>';
+}
+
 function parse_lyrics(lyrics) {
   const $ = cheerio.load(lyrics)
   $('a').each(function(i, el) {
@@ -56,16 +61,32 @@ function parse_lyrics(lyrics) {
     
   });
   if (annotations.length > 0) {
-    const tabled_song = cheerio.load('<table></table>')
+    const tabled_song = cheerio.load('<table border = 1px></table>')
     $('body').children().each(function(i, elm) {
       if (elm.tagName === 'div') {
         let annotation_id = $(this).attr('annotation_id')
-        let annotation_element = annotation_id < annotations.length ? annotations[annotation_id] : annotation_id;
-        console.log(i, annotation_element);
-        tabled_song('table').append('<tr><td style="width: 20%">' + $.html(elm) + '</td><td>' + annotation_element + '</td></tr>');
+        let annotation_element = cheerio.load(annotations[annotation_id]);
+
+        annotation_element('img').each(function(i, img_el) {
+          let p = annotation_element(img_el)
+          p.attr("style", "max-height: 300px")
+          p.removeAttr("width")
+          p.removeAttr("height")
+          annotation_element(this).replaceWith(p);
+        });
+        tabled_song('table').append('<tr>' +
+            make_td(50, $.html(elm)) +
+            make_td(50, annotation_element.html()) + '</tr>');
+      } else if (-1 !== $.html(elm).indexOf('dfp-ad')) {
+        return;
       } else {
-        tabled_song('table').append('<tr><td style="width: 100%">' + $.html(elm) + '</td></tr>');
+        if ($.html(elm) == '<br>') {
+          return;
+        }
+        tabled_song('table').append('<tr>' +
+            make_td(100, $.html(elm)) + '</tr>');
       }
+      tabled_song('table').append('<tr style="border-bottom:1px solid black"><td colspan="100%"></td></tr>\n');
     });
 
     $('body').append('<!-- separator -->')
@@ -73,12 +94,17 @@ function parse_lyrics(lyrics) {
     $('body').append(tabled_song.html())
   }
   fs.writeFileSync(destination.slice(0, -4) + '.txt', $.html());
-  return global_page_handle.setContent($.html());
+  return global_page_handle.setContent($.html()).then(sleep(10000));
 }
 
 
 function render() {
-  return global_page_handle.pdf({path: destination, format: 'A4'});
+  //TODO(wf34) fix when resolved https://github.com/GoogleChrome/puppeteer/issues/1278
+  // return global_page_handle.waitForNavigation({waitUntil: 'networkidle2' })
+  // .then(global_page_handle.pdf.bind(null, {path: destination, format: 'A4'}));
+  return global_page_handle.pdf({path: destination,
+                                 format: 'A4',
+                                 landscape : true });
 }
 
 function shutdown() {
