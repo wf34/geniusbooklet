@@ -1,7 +1,7 @@
 {
   "name": "genius_booklet",
   "version": "1.0.0",
-  "description": "",
+  "description": "Convert genius.com lyrics and annotations to print-friendly pdf",
   "main": "genius_booklet.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -17,6 +17,13 @@
   },
   "homepage": "https://github.com/wf34/geniusbooklet#readme",
   "dependencies": {
-    "puppeteer": "^0.13.0"
-  }
+    "cheerio": "^1.0.0-rc.2",
+    "puppeteer": "^0.13.0",
+    "sleep-promise": "^2.0.0"
+  },
+  "devDependencies": {},
+  "keywords": [
+    "genius.com",
+    "html_to_pdf"
+  ]
 }
