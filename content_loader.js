@@ -3,6 +3,7 @@ const sleep = require('sleep-promise');
 
 global_browser_handle = null;
 
+
 function get_browser() {
   if (global_browser_handle == null) {
     return puppeteer.launch();
@@ -45,5 +46,7 @@ module.exports.load_page = function(url) {
 };
 
 module.exports.shutdown = function() {
-  return global_browser_handle.close();
+  let h = global_browser_handle;
+  global_browser_handle = null;
+  return h.close();
 };

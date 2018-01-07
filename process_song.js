@@ -4,7 +4,7 @@ const fs = require('fs');
 const sleep = require('sleep-promise');
 
 
-function query_inner_html(address, selector) {
+module.exports.query_inner_html = function(address, selector) {
   let outputs = [];
   let selectors = [selector];
   return query_inner_htmls(address, selectors, outputs)
@@ -37,7 +37,7 @@ function query_inner_htmls(address, selectors, outputs) {
 }
 
 
-function build_annotation_urls_list(lyrics_html) {
+module.exports.build_url_list = function (lyrics_html) {
   const $ = cheerio.load(lyrics_html)
   let links = [];
   $('a').each(function(i, el) {
@@ -47,11 +47,11 @@ function build_annotation_urls_list(lyrics_html) {
   });
   console.log('link to follow: ', links);
   return Promise.resolve(links);
-}
+};
 
 
 function load_and_query_annotation(link) {
-  return query_inner_html(link, ANNOTATION_SELECTOR);
+  return module.exports.query_inner_html(link, ANNOTATION_SELECTOR);
 }
 
 function store_all_annotations(annotation_links) {
@@ -146,31 +146,26 @@ function render(output_html, dst_filepath) {
 }
 
 
-function page_to_pdf(page_url, page_dst_path) {
+module.exports.page_to_pdf = function(page_url, page_dst_path) {
   let selectors_to_call = [AUTHOR_NAME_SELECTOR, SONG_NAME_SELECTOR, BODY_LYRICS_SELECTOR];
   let valid_htmls = [];
   return query_inner_htmls(page_url, selectors_to_call, valid_htmls)
-    .then(() => build_annotation_urls_list(valid_htmls[2]))
+    .then(() => module.exports.build_url_list(valid_htmls[2]))
     .then((urls) => store_all_annotations(urls))
     .then((annotations) => form_song_output_html(annotations, valid_htmls))
     .then((out_html) => render(out_html, page_dst_path))
     .then(content_loader.shutdown);
-}
+};
 
 
-const args = process.argv;
-if (args.length < 4) {
-  console.log('Required args: <song_url> <destination_path>')
-  return 1;
-}
+module.exports.is_genius_url = function (url) {
+  return url.startsWith(GENIUS_SITE) || url.startsWith(GENIUS_SITE.substr(8));
+};
 
-address = args[2];
-destination = args[3];
+
 const GENIUS_SITE = "https://genius.com";
 const BODY_LYRICS_SELECTOR = "body > routable-page > ng-outlet > song-page > div > div > div.song_body.column_layout > div.column_layout-column_span.column_layout-column_span--primary > div > defer-compile:nth-child(2) > lyrics > div > section > p";
 const AUTHOR_NAME_SELECTOR = "body > routable-page > ng-outlet > song-page > div > div > header-with-cover-art > div > div > div.column_layout-column_span.column_layout-column_span--primary > div.header_with_cover_art-primary_info_container > div > h2 > span > a";
 const SONG_NAME_SELECTOR = "body > routable-page > ng-outlet > song-page > div > div > header-with-cover-art > div > div > div.column_layout-column_span.column_layout-column_span--primary > div.header_with_cover_art-primary_info_container > div > h1";
 const ANNOTATION_SELECTOR = "body > routable-page > ng-outlet > song-page > div > div > div.song_body.column_layout > div.column_layout-column_span.column_layout-column_span--secondary.u-top_margin.column_layout-flex_column > div.column_layout-flex_column-fill_column > annotation-sidebar > div.u-relative.nganimate-fade_slide_from_left > div:nth-child(2) > annotation > standard-rich-content > div";
 const COVER_ART_SELECTOR = "body > routable-page > ng-outlet > song-page > div > div > header-with-cover-art > div > div > div.column_layout-column_span.column_layout-column_span--primary > div.header_with_cover_art-cover_art.show_tiny_edit_button_on_hover > div > img";
-
-page_to_pdf(address, destination);
