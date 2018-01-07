@@ -1,4 +1,6 @@
+const fs = require('fs');
 const minimist = require('minimist');
+const sleep = require('sleep-promise');
 const content_loader = require('./content_loader');
 const process_song = require('./process_song');
 
@@ -27,11 +29,11 @@ function make_destination(positional_args) {
 function parse_track_list(url) {
   return process_song.query_inner_html(url, ALBUM_LIST_SELECTOR)
     .then(process_song.build_url_list,
-          () => {throw ''})
+          () => Promise.resolve([]))
 }
 
 
-function save_booklet(track_list, destination) {
+function build_html_booklet(track_list, destination) {
   console.log('Run in album mode');
   throw 'unimplemented';
 }
@@ -47,12 +49,48 @@ function make_booklet(args) {
   }
   url = add_schema_if_needed(url);
   return parse_track_list(url)
-  .then((track_list) => save_booklet(track_list, destination),
-        () => { console.log('Run in single song mode');
-                process_song.page_to_pdf(url, destination);
-               });
+    .then(execute_proper_mode)
+    .then((out_html) => render(out_html, destination))
+    .then(content_loader.shutdown);
+
+  function execute_proper_mode(parsed_tracklist) {
+    if (parsed_tracklist.length > 0) {
+      return build_html_booklet(parsed_tracklist, destination);
+    } else {
+      console.log('Run in single song mode');
+      return process_song.page_to_html(url, destination);
+    }
+  }
 }
 
+
+function render(output_html, dst_filepath) {
+  fs.writeFileSync(dst_filepath.slice(0, -4) + '.txt', output_html);
+  let this_page = null;
+  return content_loader.load_page('about:blank')
+    .then(set_content)
+    .then(sleep.bind(null, 30000))
+    .then(render_pdf)
+    .then(close_page);
+
+  function set_content(page) {
+    this_page = page;
+    //TODO(wf34) fix when resolved https://github.com/GoogleChrome/puppeteer/issues/1278
+    // return page.waitForNavigation({waitUntil: 'networkidle2' })
+    // .then(page.pdf.bind(null, {path: destination, format: 'A4'}));
+    return page.setContent(output_html)
+  }
+
+  function render_pdf() {
+    return this_page.pdf({path: dst_filepath,
+                          format: 'A4',
+                          landscape : true });
+  }
+
+  function close_page() {
+    return this_page.close();
+  }
+}
 
 function main() {
   let arguments_ = minimist(process.argv.slice(2));
@@ -72,12 +110,7 @@ function main() {
       `;
     console.log(help_message);
   } else {
-    try {
-      make_booklet(arguments_)
-        .then(content_loader.shutdown);
-    } catch (e) {
-      console.log(e)
-    }
+    make_booklet(arguments_)
   }
 }
 

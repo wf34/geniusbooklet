@@ -46,7 +46,9 @@ module.exports.load_page = function(url) {
 };
 
 module.exports.shutdown = function() {
-  let h = global_browser_handle;
-  global_browser_handle = null;
-  return h.close();
+  return global_browser_handle.close()
+    .then(() => {
+      global_browser_handle = null;
+      return Promise.resolve(null);
+    });
 };

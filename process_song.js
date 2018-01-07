@@ -1,6 +1,5 @@
 const content_loader = require('./content_loader');
 const cheerio = require('cheerio')
-const fs = require('fs');
 const sleep = require('sleep-promise');
 
 
@@ -67,6 +66,7 @@ function make_td(w, innards) {
 }
 
 function form_song_output_html(annotations, selected_htmls) {
+  console.log('do song html');
   author = selected_htmls[0];
   title = selected_htmls[1];
   lyrics = selected_htmls[2];
@@ -115,46 +115,13 @@ function form_song_output_html(annotations, selected_htmls) {
 }
 
 
-function render(output_html, dst_filepath) {
-  console.log('will store to ' + dst_filepath);
-  fs.writeFileSync(dst_filepath.slice(0, -4) + '.txt', output_html);
-  
-  let this_page = null;
-  return content_loader.load_page('about:blank')
-    .then(set_content)
-    .then(sleep.bind(null, 30000))
-    .then(render_pdf)
-    .then(close_page);
-
-  function set_content(page) {
-    this_page = page;
-    //TODO(wf34) fix when resolved https://github.com/GoogleChrome/puppeteer/issues/1278
-    // return page.waitForNavigation({waitUntil: 'networkidle2' })
-    // .then(page.pdf.bind(null, {path: destination, format: 'A4'}));
-    return page.setContent(output_html)
-  }
-
-  function render_pdf() {
-    return this_page.pdf({path: dst_filepath,
-                          format: 'A4',
-                          landscape : true });
-  }
-
-  function close_page() {
-    return this_page.close();
-  }
-}
-
-
-module.exports.page_to_pdf = function(page_url, page_dst_path) {
+module.exports.page_to_html = function(page_url, page_dst_path) {
   let selectors_to_call = [AUTHOR_NAME_SELECTOR, SONG_NAME_SELECTOR, BODY_LYRICS_SELECTOR];
   let valid_htmls = [];
   return query_inner_htmls(page_url, selectors_to_call, valid_htmls)
     .then(() => module.exports.build_url_list(valid_htmls[2]))
     .then((urls) => store_all_annotations(urls))
     .then((annotations) => form_song_output_html(annotations, valid_htmls))
-    .then((out_html) => render(out_html, page_dst_path))
-    .then(content_loader.shutdown);
 };
 
 
