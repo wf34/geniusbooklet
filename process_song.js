@@ -77,6 +77,8 @@ function form_song_output_html(annotations, selected_htmls) {
     $(this).replaceWith(p);
     
   });
+
+  $('body').prepend('<center><h1>' + title + '</h1><h2>' + author + '</h2></center><br>')
   if (annotations.length > 0) {
     const tabled_song = cheerio.load('<table border = 1px></table>')
     $('body').children().each(function(i, elm) {
@@ -106,7 +108,6 @@ function form_song_output_html(annotations, selected_htmls) {
       tabled_song('table').append('<tr style="border-bottom:1px solid black"><td colspan="100%"></td></tr>\n');
     });
 
-    $('body').prepend('<center><h1>' + title + '</h1><h2>' + author + '</h2></center><br>')
     $('body').append('<!-- separator -->')
     $('body').append('<br>')
     $('body').append(tabled_song.html())
@@ -115,7 +116,7 @@ function form_song_output_html(annotations, selected_htmls) {
 }
 
 
-module.exports.page_to_html = function(page_url, page_dst_path) {
+module.exports.page_to_html = function(page_url) {
   let selectors_to_call = [AUTHOR_NAME_SELECTOR, SONG_NAME_SELECTOR, BODY_LYRICS_SELECTOR];
   let valid_htmls = [];
   return query_inner_htmls(page_url, selectors_to_call, valid_htmls)

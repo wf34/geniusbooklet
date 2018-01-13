@@ -29,13 +29,24 @@ function make_destination(positional_args) {
 function parse_track_list(url) {
   return process_song.query_inner_html(url, ALBUM_LIST_SELECTOR)
     .then(process_song.build_url_list,
-          () => Promise.resolve([]))
+          () => Promise.resolve([]));
 }
 
 
-function build_html_booklet(track_list, destination) {
+function build_html_booklet(track_list) {
   console.log('Run in album mode');
-  throw 'unimplemented';
+  let full_html = "";
+  let page_break = '<body><div style="page-break-after: always;"><br></div></body>';
+  return track_list.reduce((promise, track) => {
+    return promise.then(() => process_song.page_to_html(track)
+                              .then((result) => { if (full_html !== "") {
+                                                    full_html += page_break;
+                                                  }
+                                                  full_html += result;
+                                                })
+                       );
+  }, Promise.resolve())
+  .then(() => Promise.resolve(full_html));
 }
 
 
@@ -55,10 +66,10 @@ function make_booklet(args) {
 
   function execute_proper_mode(parsed_tracklist) {
     if (parsed_tracklist.length > 0) {
-      return build_html_booklet(parsed_tracklist, destination);
+      return build_html_booklet(parsed_tracklist);
     } else {
       console.log('Run in single song mode');
-      return process_song.page_to_html(url, destination);
+      return process_song.page_to_html(url);
     }
   }
 }
