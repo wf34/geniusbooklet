@@ -27,6 +27,7 @@ function navigate_page(address, page) {
                    waitUntil: 'networkidle2',
                    timeout: 240000
                  })
+       .then(sleep(5000))
        .then(() => Promise.resolve(page));
 }
 
