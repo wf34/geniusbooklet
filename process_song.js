@@ -96,9 +96,10 @@ function form_song_output_html(annotations, selected_htmls) {
         tabled_song('table').append('<tr>' +
             make_td(50, $.html(elm)) +
             make_td(50, annotation_element.html()) + '</tr>');
-      } else if (-1 !== $.html(elm).indexOf('dfp-ad')) {
-        return;
       } else {
+        if ((['iframe', 'dfp-ad'].map((x) => $.html(elm).indexOf())).some(x => x !== -1)) {
+          return;
+        }
         if ($.html(elm) == '<br>') {
           return;
         }
