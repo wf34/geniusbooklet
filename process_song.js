@@ -78,7 +78,7 @@ function get_cover_art_page(img_html) {
 
 
 function form_song_output_html(annotations, selected_htmls, is_cover_art_needed) {
-  console.log('do song html');
+  console.log('do song html', is_cover_art_needed);
   const author = selected_htmls[0];
   const title = selected_htmls[1];
   const lyrics = selected_htmls[2];
@@ -100,7 +100,8 @@ function form_song_output_html(annotations, selected_htmls, is_cover_art_needed)
   if (annotations.length > 0) {
     const tabled_song = cheerio.load('<table border = 1px></table>')
     $('body').children().each(function(i, elm) {
-      if (elm.tagName === 'div') {
+      if (elm.tagName === 'div' && $.html(elm).indexOf('cover_art_id') == -1) {
+        console.log(i, $.html(elm))
         let annotation_id = $(this).attr('annotation_id')
         let annotation_element = cheerio.load(annotations[annotation_id]);
 
@@ -115,7 +116,7 @@ function form_song_output_html(annotations, selected_htmls, is_cover_art_needed)
             make_td(50, $.html(elm)) +
             make_td(50, annotation_element.html()) + '</tr>');
       } else {
-        if ((['iframe', 'dfp-ad'].map((x) => $.html(elm).indexOf())).some(x => x !== -1)) {
+        if ((['iframe', 'dfp-ad'].map((x) => $.html(elm).indexOf(x))).some(x => x !== -1)) {
           return;
         }
         if ($.html(elm) == '<br>') {
