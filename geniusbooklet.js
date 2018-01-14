@@ -33,12 +33,20 @@ function parse_track_list(url) {
 }
 
 
+make_html_page_break = function() {
+  return '<body><div style="page-break-after: always;"><br></div></body>';
+}
+
+
 function build_html_booklet(track_list) {
   console.log('Run in album mode');
+  let track_list_with_flags = track_list.map(function(e, i) {
+    return [e, i == 0 ? true : false];
+  });
   let full_html = "";
-  let page_break = '<body><div style="page-break-after: always;"><br></div></body>';
-  return track_list.reduce((promise, track) => {
-    return promise.then(() => process_song.page_to_html(track)
+  let page_break = make_html_page_break();
+  return track_list_with_flags.reduce((promise, args) => {
+    return promise.then(() => process_song.page_to_html.apply(this, args)
                               .then((result) => { if (full_html !== "") {
                                                     full_html += page_break;
                                                   }
@@ -47,6 +55,15 @@ function build_html_booklet(track_list) {
                        );
   }, Promise.resolve())
   .then(() => Promise.resolve(full_html));
+}
+
+
+function add_last_page(html) {
+  let last_page_html = fs.readFileSync("./last_page.html", "utf8");
+  let today = new Date().toISOString().slice(0, 10);
+  last_page_html = last_page_html.replace("CURRENTDATE", today);
+  html += last_page_html;
+  return Promise.resolve(html);
 }
 
 
@@ -61,6 +78,7 @@ function make_booklet(args) {
   url = add_schema_if_needed(url);
   return parse_track_list(url)
     .then(execute_proper_mode)
+    .then(add_last_page)
     .then((out_html) => render(out_html, destination))
     .then(content_loader.shutdown);
 
@@ -69,14 +87,16 @@ function make_booklet(args) {
       return build_html_booklet(parsed_tracklist);
     } else {
       console.log('Run in single song mode');
-      return process_song.page_to_html(url);
+      return process_song.page_to_html(url, true)
+        .then((html) => Promise.resolve(
+          html + make_html_page_break()));
     }
   }
 }
 
 
-function render(output_html, dst_filepath) {
-  fs.writeFileSync(dst_filepath.slice(0, -4) + '.txt', output_html);
+function render(output_html, dst_filepath, print_format) {
+  fs.writeFileSync(dst_filepath.slice(0, -4) + '.html', output_html);
   let this_page = null;
   return content_loader.load_page('about:blank')
     .then(set_content)
@@ -95,7 +115,8 @@ function render(output_html, dst_filepath) {
   function render_pdf() {
     return this_page.pdf({path: dst_filepath,
                           format: 'A4',
-                          landscape : true });
+                          landscape : true,
+                          printBackground : true});
   }
 
   function close_page() {

@@ -1,3 +1,4 @@
+const fs = require('fs');
 const content_loader = require('./content_loader');
 const cheerio = require('cheerio')
 const sleep = require('sleep-promise');
@@ -53,6 +54,7 @@ function load_and_query_annotation(link) {
   return module.exports.query_inner_html(link, ANNOTATION_SELECTOR);
 }
 
+
 function store_all_annotations(annotation_links) {
   let annotations = [];
   return annotation_links.reduce((promise, alink) => {
@@ -61,16 +63,27 @@ function store_all_annotations(annotation_links) {
     .then(() => Promise.resolve(annotations));
 }
 
+
 function make_td(w, innards) {
   return '<td valign="top" style="width:' + w + '%;border-right:none;border-left:none;border-bottom:none;border-top:none">' + innards + '</td>';
 }
 
-function form_song_output_html(annotations, selected_htmls) {
+
+function get_cover_art_page(img_html) {
+  const img_tree = cheerio.load(img_html);
+  const cover_art_url = img_tree('img').attr('src');
+  const cover_art_html = fs.readFileSync("./cover_page.html", "utf8");
+  return cover_art_html.replace("COVERART_URLTEMPLATE", cover_art_url);
+}
+
+
+function form_song_output_html(annotations, selected_htmls, is_cover_art_needed) {
   console.log('do song html');
-  author = selected_htmls[0];
-  title = selected_htmls[1];
-  lyrics = selected_htmls[2];
-  const $ = cheerio.load(lyrics)
+  const author = selected_htmls[0];
+  const title = selected_htmls[1];
+  const lyrics = selected_htmls[2];
+  const cover_art = selected_htmls[3];
+  const $ = cheerio.load(lyrics);
   $('a').each(function(i, el) {
     let p = $('<div>' + $(this).html() + '</div>');
     p.attr('annotation_id', i)
@@ -79,6 +92,11 @@ function form_song_output_html(annotations, selected_htmls) {
   });
 
   $('body').prepend('<center><h1>' + title + '</h1><h2>' + author + '</h2></center><br>')
+
+  if (is_cover_art_needed) {
+    $('body').prepend(get_cover_art_page(cover_art));
+  }
+
   if (annotations.length > 0) {
     const tabled_song = cheerio.load('<table border = 1px></table>')
     $('body').children().each(function(i, elm) {
@@ -117,13 +135,17 @@ function form_song_output_html(annotations, selected_htmls) {
 }
 
 
-module.exports.page_to_html = function(page_url) {
+module.exports.page_to_html = function(page_url, is_cover_art_needed) {
   let selectors_to_call = [AUTHOR_NAME_SELECTOR, SONG_NAME_SELECTOR, BODY_LYRICS_SELECTOR];
+  if (is_cover_art_needed) {
+    selectors_to_call.push(COVER_ART_SELECTOR);
+  }
+
   let valid_htmls = [];
   return query_inner_htmls(page_url, selectors_to_call, valid_htmls)
     .then(() => module.exports.build_url_list(valid_htmls[2]))
     .then((urls) => store_all_annotations(urls))
-    .then((annotations) => form_song_output_html(annotations, valid_htmls))
+    .then((annotations) => form_song_output_html(annotations, valid_htmls, is_cover_art_needed))
 };
 
 
@@ -137,4 +159,4 @@ const BODY_LYRICS_SELECTOR = "body > routable-page > ng-outlet > song-page > div
 const AUTHOR_NAME_SELECTOR = "body > routable-page > ng-outlet > song-page > div > div > header-with-cover-art > div > div > div.column_layout-column_span.column_layout-column_span--primary > div.header_with_cover_art-primary_info_container > div > h2 > span > a";
 const SONG_NAME_SELECTOR = "body > routable-page > ng-outlet > song-page > div > div > header-with-cover-art > div > div > div.column_layout-column_span.column_layout-column_span--primary > div.header_with_cover_art-primary_info_container > div > h1";
 const ANNOTATION_SELECTOR = "body > routable-page > ng-outlet > song-page > div > div > div.song_body.column_layout > div.column_layout-column_span.column_layout-column_span--secondary.u-top_margin.column_layout-flex_column > div.column_layout-flex_column-fill_column > annotation-sidebar > div.u-relative.nganimate-fade_slide_from_left > div:nth-child(2) > annotation > standard-rich-content > div";
-const COVER_ART_SELECTOR = "body > routable-page > ng-outlet > song-page > div > div > header-with-cover-art > div > div > div.column_layout-column_span.column_layout-column_span--primary > div.header_with_cover_art-cover_art.show_tiny_edit_button_on_hover > div > img";
+const COVER_ART_SELECTOR = "body > routable-page > ng-outlet > song-page > div > div > header-with-cover-art > div > div > div.column_layout-column_span.column_layout-column_span--primary > div.header_with_cover_art-cover_art.show_tiny_edit_button_on_hover > div";
