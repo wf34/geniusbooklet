@@ -34,7 +34,7 @@ function parse_track_list(url) {
 
 
 make_html_page_break = function() {
-  return '<body><div style="page-break-after: always;"><br></div></body>';
+  return '<div style="page-break-after: always;"></div>';
 }
 
 
@@ -47,10 +47,8 @@ function build_html_booklet(track_list) {
   let page_break = make_html_page_break();
   return track_list_with_flags.reduce((promise, args) => {
     return promise.then(() => process_song.page_to_html.apply(this, args)
-                              .then((result) => { if (full_html !== "") {
-                                                    full_html += page_break;
-                                                  }
-                                                  full_html += result;
+                              .then((result) => {  full_html += result;
+                                                   full_html += page_break;
                                                 })
                        );
   }, Promise.resolve())
