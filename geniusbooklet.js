@@ -70,6 +70,7 @@ function add_last_page(html) {
 function make_booklet(args) {
   let url = args['_'][0];
   let destination = make_destination(args['_']);
+  let print_format = args['format'] != undefined ? args['format'] : 'p';
   console.log('Booklet will be stored at: ', destination);
 
   if (!(process_song.is_genius_url(url))) {
@@ -79,7 +80,7 @@ function make_booklet(args) {
   return parse_track_list(url)
     .then(execute_proper_mode)
     .then(add_last_page)
-    .then((out_html) => render(out_html, destination))
+    .then((out_html) => render(out_html, destination, print_format))
     .then(content_loader.shutdown);
 
   function execute_proper_mode(parsed_tracklist) {
@@ -112,11 +113,23 @@ function render(output_html, dst_filepath, print_format) {
     return page.setContent(output_html)
   }
 
+  function get_render_options() {
+    let opts = {path: dst_filepath,
+                printBackground : true};
+
+    if (print_format == 'p') {
+      opts.format = 'A4';
+      opts.landscape = false;
+    } else {
+      opts.width = '105mm';
+      opts.height = '148mm';
+      opts.landscape = true;
+    }
+    return opts;
+  }
+
   function render_pdf() {
-    return this_page.pdf({path: dst_filepath,
-                          format: 'A4',
-                          landscape : true,
-                          printBackground : true});
+    return this_page.pdf(get_render_options());
   }
 
   function close_page() {
@@ -126,17 +139,25 @@ function render(output_html, dst_filepath, print_format) {
 
 function main() {
   let arguments_ = minimist(process.argv.slice(2));
+  let is_format_valid = function(args) {
+    const fargs = args['format'];
+    return fargs === undefined ||
+           (fargs.length > 0 && (fargs[0] == 'p' || fargs[0] == 'b')) ||
+           fargs.length === 0;
+  };
+
   if (arguments_.hasOwnProperty('help') ||
       arguments_.hasOwnProperty('?') ||
       arguments_['_'].length === 0  ||
-      arguments_['_'].length > 2) {
+      arguments_['_'].length > 2 ||
+      !is_format_valid(arguments_)) {
     help_message =
       `Usage: geniusbooklet.js <address> [<destination> options]
         address - url of a song or album from Genius.com
         destination - where to put booklet pdf file
   
        Options:
-        format (default b):
+        --format (default p):
           * p (page) print in A4, better suited for off-the-screen reading 
           * b (booklet) print in 4.75in x 4.75in for nice typographic
       `;
