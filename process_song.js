@@ -64,8 +64,8 @@ function store_all_annotations(annotation_links) {
 }
 
 
-function make_td(w, innards) {
-  return '<td valign="top" style="width:' + w + '%;border-right:none;border-left:none;border-bottom:none;border-top:none">' + innards + '</td>';
+function make_tr(w, innards) {
+  return '<tr style="page-break-inside:avoid;white-space: nowrap;"><td valign="top" style="width:' + w + '%;border-right:none;border-left:none;border-bottom:none;border-top:none;">' + innards + '</td></tr>';
 }
 
 
@@ -112,9 +112,8 @@ function form_song_output_html(annotations, selected_htmls, is_cover_art_needed)
           p.removeAttr("height")
           annotation_element(this).replaceWith(p);
         });
-        tabled_song('table').append('<tr>' +
-            make_td(50, $.html(elm)) +
-            make_td(50, annotation_element.html()) + '</tr>');
+        tabled_song('table').append(make_tr(100, $.html(elm)));
+        tabled_song('table').append(make_tr(100, annotation_element.html()));
       } else {
         if ((['iframe', 'dfp-ad'].map((x) => $.html(elm).indexOf(x))).some(x => x !== -1)) {
           return;
@@ -122,8 +121,7 @@ function form_song_output_html(annotations, selected_htmls, is_cover_art_needed)
         if ($.html(elm) == '<br>') {
           return;
         }
-        tabled_song('table').append('<tr>' +
-            make_td(100, $.html(elm)) + '</tr>');
+        tabled_song('table').append(make_tr(100, $.html(elm)));
       }
       tabled_song('table').append('<tr style="border-bottom:1px solid black"><td colspan="100%"></td></tr>\n');
     });
