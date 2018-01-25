@@ -113,15 +113,20 @@ function render(output_html, dst_filepath, print_format) {
 
   function get_render_options() {
     let opts = {path: dst_filepath,
-                printBackground : true};
+                printBackground: true,
+                landscape: false
+                };
 
     if (print_format == 'p') {
       opts.format = 'A4';
-      opts.landscape = false;
     } else {
+      const margin_size = '1.5cm'
       opts.width = '105mm';
       opts.height = '148mm';
-      opts.landscape = true;
+      opts.margin = {left: margin_size,
+                     right: margin_size,
+                     top: margin_size,
+                     bottom: margin_size};
     }
     return opts;
   }
