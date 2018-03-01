@@ -70,21 +70,22 @@ function make_booklet(args) {
   let destination = make_destination(args['_']);
   // b (booklet) print in A6 for nice typographic 
   let print_format = 'b';
+  let mode = args['mode'] != undefined ? args['mode'] : 't';
   console.log('Booklet will be stored at: ', destination);
 
   if (!(process_song.is_genius_url(url))) {
     throw 'Error: expected url from genius.com';
   }
   url = add_schema_if_needed(url);
-  return parse_track_list(url)
-    .then(execute_proper_mode)
+  return execute_proper_mode()
     .then(add_last_page)
     .then((out_html) => render(out_html, destination, print_format))
     .then(content_loader.shutdown);
 
-  function execute_proper_mode(parsed_tracklist) {
-    if (parsed_tracklist.length > 0) {
-      return build_html_booklet(parsed_tracklist);
+  function execute_proper_mode() {
+    if (mode == 'a') {
+      return parse_track_list(url)
+        .then(build_html_booklet)
     } else {
       console.log('Run in single song mode');
       return process_song.page_to_html(url, true)
@@ -159,6 +160,10 @@ function main() {
       `Usage: geniusbooklet.js <address> [<destination> options]
         address - url of a song or album from Genius.com
         destination - where to put booklet pdf file
+    Options:
+        --mode (default t):
+          * t Run in track mode; Expect an URL to the track
+          * a Run in album mode; Expect an URL to the album
       `;
     console.log(help_message);
   } else {
