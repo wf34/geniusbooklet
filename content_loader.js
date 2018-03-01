@@ -13,7 +13,7 @@ function get_browser() {
 }
 
 function instantiate_page(browser) {
-  console.log("browser started")
+  console.log("browser started");
   if (global_browser_handle == null) {
     global_browser_handle = browser;
   }
@@ -21,15 +21,22 @@ function instantiate_page(browser) {
 }
 
 
+class PageLoadError extends Error {
+  constructor(message, page) {
+    super(message);
+    this.page = page;
+  }
+};
+
+
 function navigate_page(address, page) {
   console.log('now navigate to: ', address)
-  return page.goto(address, {
-                   waitUntil: 'networkidle2',
-                   timeout: 240000
-                 })
-       .then(sleep(5000))
-       .then(() => Promise.resolve(page));
+  return page.goto(address, { waitUntil: 'networkidle2',
+                              timeout: 240000})
+    .then(() => Promise.resolve(page))
+    .catch((err) => Promise.reject(new PageLoadError(err, page)));
 }
+
 
 function fetch_page_content(page) {
   console.log("Yay, page loaded");
@@ -44,7 +51,17 @@ module.exports.load_page = function(url) {
     .then(instantiate_page)
     .then(navigate_page.bind(null, url))
     .then(fetch_page_content)
-};
+    .catch(restart)
+
+  function restart(error) {
+    if (error instanceof PageLoadError) {
+      error.page.close();
+      return exports.load_page(url);
+    } else {
+      throw error;
+    }
+  }
+}
 
 module.exports.shutdown = function() {
   return global_browser_handle.close()

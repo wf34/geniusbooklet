@@ -12,11 +12,15 @@ module.exports.query_inner_html = function(address, selector) {
 }
 
 
+class NoContentError extends Error {};
+
+
 function query_inner_htmls(address, selectors, outputs) {
  let this_page = null;
   return content_loader.load_page(address)
     .then(evaluate_all)
-    .then(close_page);
+    .then(close_page)
+    .catch(restart);
 
   function evaluate_all(page) {
     console.log("got html");
@@ -27,12 +31,23 @@ function query_inner_htmls(address, selectors, outputs) {
   }
 
   function select_html(selector) {
-    return this_page.$eval(selector, (el) => el.innerHTML);
+    return this_page.$eval(selector, (el) => el.innerHTML)
+      .catch(() => Promise.reject(new NoContentError()));
   }
 
   function close_page(x) {
     return this_page.close()
       .then(() => x);
+  }
+
+  function restart(error) {
+    if (error instanceof NoContentError) {
+      outputs = [];
+      return close_page(this_page)
+        .then(query_inner_htmls.bind(null, address, selectors, outputs));
+    } else {
+      throw error;
+    }
   }
 }
 
