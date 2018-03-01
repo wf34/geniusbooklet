@@ -68,7 +68,8 @@ function add_last_page(html) {
 function make_booklet(args) {
   let url = args['_'][0];
   let destination = make_destination(args['_']);
-  let print_format = args['format'] != undefined ? args['format'] : 'p';
+  // b (booklet) print in A6 for nice typographic 
+  let print_format = 'b';
   console.log('Booklet will be stored at: ', destination);
 
   if (!(process_song.is_genius_url(url))) {
@@ -158,11 +159,6 @@ function main() {
       `Usage: geniusbooklet.js <address> [<destination> options]
         address - url of a song or album from Genius.com
         destination - where to put booklet pdf file
-  
-       Options:
-        --format (default p):
-          * p (page) print in A4, better suited for off-the-screen reading 
-          * b (booklet) print in 4.75in x 4.75in for nice typographic
       `;
     console.log(help_message);
   } else {
