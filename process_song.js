@@ -15,18 +15,21 @@ module.exports.query_inner_html = function(address, selector) {
 }
 
 
-class NoContentError extends Error {};
+class NoContentError extends Error {
+  constructor(message, selector) {
+    super(message);
+    this.selector = selector;
+}};
 
 
 function query_inner_htmls(address, selectors, outputs) {
  let this_page = null;
   return content_loader.load_page(address)
     .then(evaluate_all)
-    .then(close_page)
-    .catch(restart);
+    .then(close_page);
 
   function evaluate_all(page) {
-    console.log("got html");
+    console.log("got content");
     this_page = page; 
     return selectors.reduce((promise, selector) => {
       return promise.then(() => select_html(selector).then((result) => outputs.push(result)))
@@ -35,7 +38,8 @@ function query_inner_htmls(address, selectors, outputs) {
 
   function select_html(selector) {
     return this_page.$eval(selector, (el) => el.innerHTML)
-      .catch(() => Promise.reject(new NoContentError()));
+      .catch((error) => Promise.reject(new NoContentError(error, selector)))
+      .catch(restart)
   }
 
   function close_page(x) {
@@ -45,9 +49,9 @@ function query_inner_htmls(address, selectors, outputs) {
 
   function restart(error) {
     if (error instanceof NoContentError) {
-      outputs = [];
-      return close_page(this_page)
-        .then(query_inner_htmls.bind(null, address, selectors, outputs));
+      return sleep(1000)
+        .then(() => Promise.resolve(error.selector))
+        .then(select_html);
     } else {
       throw error;
     }
