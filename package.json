@@ -18,8 +18,9 @@
   "homepage": "https://github.com/wf34/geniusbooklet#readme",
   "dependencies": {
     "cheerio": "^1.0.0-rc.2",
+    "invariant": "^2.2.3",
     "minimist": "^1.2.0",
-    "puppeteer": "^0.13.0",
+    "puppeteer": "^1.1.1",
     "sleep-promise": "^2.0.0"
   },
   "devDependencies": {},

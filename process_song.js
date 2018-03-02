@@ -2,13 +2,16 @@ const fs = require('fs');
 const content_loader = require('./content_loader');
 const cheerio = require('cheerio')
 const sleep = require('sleep-promise');
+const invariant = require('invariant');
+
 
 
 module.exports.query_inner_html = function(address, selector) {
   let outputs = [];
   let selectors = [selector];
   return query_inner_htmls(address, selectors, outputs)
-    .then(() => Promise.resolve(outputs[0]));
+    .then(() => { invariant(outputs[0] != undefined, 'Query should never fail', address);
+                  return Promise.resolve(outputs[0]) });
 }
 
 
@@ -98,7 +101,9 @@ function form_song_output_html(annotations, selected_htmls, is_cover_art_needed)
   const title = selected_htmls[1];
   const lyrics = selected_htmls[2];
   const cover_art = selected_htmls[3];
+  invariant(lyrics !== undefined, 'Lyrics must exist');
   const $ = cheerio.load(lyrics);
+  
   $('a').each(function(i, el) {
     let p = $('<div>' + $(this).html() + '</div>');
     p.attr('annotation_id', i)
@@ -109,6 +114,7 @@ function form_song_output_html(annotations, selected_htmls, is_cover_art_needed)
   $('body').prepend('<center><h1>' + title + '</h1><h2>' + author + '</h2></center><br>')
 
   if (is_cover_art_needed) {
+    invariant(cover_art !== undefined, 'Cover Art Url must exist');
     $('body').prepend(get_cover_art_page(cover_art));
   }
 
@@ -118,11 +124,14 @@ function form_song_output_html(annotations, selected_htmls, is_cover_art_needed)
       if (elm.tagName === 'div' && $.html(elm).indexOf('cover_art_id') == -1) {
         console.log(i, $.html(elm))
         let annotation_id = $(this).attr('annotation_id')
+        invariant(annotations[annotation_id] !== undefined,
+                  'We must have the annotation',
+                  annotation_id, annotations.length);
         let annotation_element = cheerio.load(annotations[annotation_id]);
 
         annotation_element('img').each(function(i, img_el) {
           let p = annotation_element(img_el)
-          p.attr("style", "max-height: 300px")
+          p.attr("style", "max-height: 400px")
           p.removeAttr("width")
           p.removeAttr("height")
           annotation_element(this).replaceWith(p);
