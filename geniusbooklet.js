@@ -168,6 +168,10 @@ function main() {
     console.log(help_message);
   } else {
     make_booklet(arguments_)
+    .catch((error) => {
+      console.log('Unhandled error got through:', error);
+      process.exit(1)
+    });
   }
 }
 
