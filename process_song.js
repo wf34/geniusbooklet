@@ -86,8 +86,24 @@ function store_all_annotations(annotation_links) {
 }
 
 
-function make_tr(innards) {
-  return '<tr style="page-break-inside:avoid;white-space: nowrap;"><td valign="top" style="border-right:none;border-left:none;border-bottom:none;border-top:none;">' + innards + '</td></tr>';
+function make_block(lyrics_html, annotation_html) {
+  const lt = "LYRICS_BLOCK_TEMPLATE";
+  const lot = "LYRICS_ONLY_BLOCK_TEMPLATE";
+  const at = "ANNOTATION_BLOCK_TEMPLATE";
+  let block_html = fs.readFileSync("./annotation_block.html", "utf8");
+  let divs_to_remove = [];
+  if (annotation_html != undefined) {
+    block_html = block_html.replace(lt, lyrics_html);
+    block_html = block_html.replace(at, annotation_html);
+    divs_to_remove.push('.lyrics_only_block');
+  } else {
+    block_html = block_html.replace(lot, lyrics_html);
+    divs_to_remove.push('.lyrics_block');
+    divs_to_remove.push('.annotation_block');
+  }
+  const block = cheerio.load(block_html);
+  divs_to_remove.forEach((x) => { block(x).remove(); });
+  return block.html();
 }
 
 
@@ -123,9 +139,12 @@ function form_song_output_html(annotations, selected_htmls, is_cover_art_needed)
   }
 
   if (annotations.length > 0) {
-    const tabled_song = cheerio.load('<table border = 1px></table>')
+    let tabled_song = '';
     $('body').children().each(function(i, elm) {
-      if (elm.tagName === 'div' && $.html(elm).indexOf('cover_art_id') == -1) {
+      if (elm.tagName === 'div') {
+        if ($.html(elm).indexOf('cover_art_id') != -1) {
+          return;
+        }
         console.log(i, $.html(elm))
         let annotation_id = $(this).attr('annotation_id')
         invariant(annotations[annotation_id] !== undefined,
@@ -134,29 +153,26 @@ function form_song_output_html(annotations, selected_htmls, is_cover_art_needed)
         let annotation_element = cheerio.load(annotations[annotation_id]);
 
         annotation_element('img').each(function(i, img_el) {
-          let p = annotation_element(img_el)
-          p.attr("style", "max-height: 400px")
-          p.removeAttr("width")
-          p.removeAttr("height")
+          let p = annotation_element(img_el);
+          p.attr("style", "display: block; width: 70%; height: auto;");
+          p.removeAttr("width");
+          p.removeAttr("height");
           annotation_element(this).replaceWith(p);
         });
-        tabled_song('table').append(make_tr($.html(elm)));
-        tabled_song('table').append(make_tr(annotation_element.html()));
+        tabled_song += make_block($.html(elm), annotation_element.html());
       } else {
-        if ((['iframe', 'dfp-ad'].map((x) => $.html(elm).indexOf(x))).some(x => x !== -1)) {
+        if ((['<style>', 'h1', 'h2', 'iframe', 'dfp-ad'].map((x) => $.html(elm).indexOf(x))).some(x => x !== -1)) {
           return;
         }
         if ($.html(elm) == '<br>') {
           return;
         }
-        tabled_song('table').append(make_tr($.html(elm)));
+        tabled_song += make_block($.html(elm));
       }
-      tabled_song('table').append('<tr style="border-bottom:1px solid black"><td colspan="100%"></td></tr>\n');
     });
-
     $('body').append('<!-- separator -->')
     $('body').append('<br>')
-    $('body').append(tabled_song.html())
+    $('body').append(tabled_song)
   }
   return Promise.resolve($.html());
 }
