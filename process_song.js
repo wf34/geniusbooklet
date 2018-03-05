@@ -140,12 +140,11 @@ function form_song_output_html(annotations, selected_htmls, is_cover_art_needed)
 
   if (annotations.length > 0) {
     let tabled_song = '';
-    $('body').children().each(function(i, elm) {
+    $('body').contents().each(function(i, elm) {
       if (elm.tagName === 'div') {
         if ($.html(elm).indexOf('cover_art_id') != -1) {
           return;
         }
-        console.log(i, $.html(elm))
         let annotation_id = $(this).attr('annotation_id')
         invariant(annotations[annotation_id] !== undefined,
                   'We must have the annotation',
