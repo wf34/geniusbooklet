@@ -72,8 +72,30 @@ module.exports.build_url_list = function (lyrics_html) {
 };
 
 
+function reformat_youtube_embeds(html) {
+  const $ = cheerio.load(html);
+  $('.embedly_preview--video').each(function(i, el) {
+    let e = $(el);
+    let iframe = e.find('iframe');
+    src = iframe.attr('src');
+    video_code = src.substring(src.lastIndexOf('/') + 1, src.indexOf('?'));
+    thumbnail_url = 'https://img.youtube.com/vi/' + video_code + '/default.jpg'
+    video_url = 'https://youtube.com/watch?v=' + video_code
+    p = $('<a href=' + video_url + '><img src=' + thumbnail_url + '></a>');
+    $(this).replaceWith(p);
+  });
+
+  $('.embedly_preview').each(function(i, el) {
+    $(this).remove();
+  });
+
+  return Promise.resolve($.html());
+}
+
+
 function load_and_query_annotation(link) {
-  return module.exports.query_inner_html(link, ANNOTATION_SELECTOR);
+  return module.exports.query_inner_html(link, ANNOTATION_SELECTOR)
+    .then(reformat_youtube_embeds);
 }
 
 
