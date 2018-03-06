@@ -188,6 +188,9 @@ function form_song_output_html(annotations, selected_htmls, is_cover_art_needed)
         if ($.html(elm) == '<br>') {
           return;
         }
+        if (/^\s*$/.test($.html(elm))) {
+          return;
+        }
         tabled_song += make_block($.html(elm));
       }
     });
