@@ -129,90 +129,101 @@ function make_block(lyrics_html, annotation_html) {
 }
 
 
-function get_cover_art_page(img_html) {
-  const img_tree = cheerio.load(img_html);
-  const cover_art_url = img_tree('img').attr('src');
+function get_cover_art_page(cover_art_url) {
   const cover_art_html = fs.readFileSync("./cover_page.html", "utf8");
   return cover_art_html.replace("COVERART_URLTEMPLATE", cover_art_url);
 }
 
 
-function form_song_output_html(annotations, selected_htmls, is_cover_art_needed) {
-  console.log('do song html', is_cover_art_needed);
-  const author = selected_htmls[0];
-  const title = selected_htmls[1];
-  const lyrics = selected_htmls[2];
-  const cover_art = selected_htmls[3];
-  invariant(lyrics !== undefined, 'Lyrics must exist');
-  const $ = cheerio.load(lyrics);
-  
+function inject_annotation_ids($) {
   $('a').each(function(i, el) {
     let p = $('<div>' + $(this).html() + '</div>');
     p.attr('annotation_id', i)
     $(this).replaceWith(p);
-    
   });
+}
 
+function add_header($, title, author, cover_art_address) {
   $('body').prepend('<center><h1>' + title + '</h1><h2>' + author + '</h2></center><br>')
-
-  if (is_cover_art_needed) {
-    invariant(cover_art !== undefined, 'Cover Art Url must exist');
-    $('body').prepend(get_cover_art_page(cover_art));
+  if (cover_art_address !== undefined) {
+    $('body').prepend(get_cover_art_page(cover_art_address));
   }
+}
 
-  if (annotations.length > 0) {
-    let tabled_song = '';
-    $('body').contents().each(function(i, elm) {
-      if (elm.tagName === 'div') {
-        if ($.html(elm).indexOf('cover_art_id') != -1) {
-          return;
-        }
-        let annotation_id = $(this).attr('annotation_id')
-        invariant(annotations[annotation_id] !== undefined,
-                  'We must have the annotation',
-                  annotation_id, annotations.length);
-        let annotation_element = cheerio.load(annotations[annotation_id]);
+function delete_irrelevant_blocks($) {
+  $('body').contents().each(function(i, elm) {
+    if ((['<style>', 'h1', 'h2', 'iframe', 'dfp-ad'].map((x) => $.html(elm).indexOf(x))).some(x => x !== -1) ||
+        /^\s*$/.test($.html(elm)) ||
+        $.html(elm).length < 3) {
+      $(this).remove();
+    }
+  });
+}
 
-        annotation_element('img').each(function(i, img_el) {
-          let p = annotation_element(img_el);
-          p.attr("style", "display: block; width: 70%; height: auto;");
-          p.removeAttr("width");
-          p.removeAttr("height");
-          annotation_element(this).replaceWith(p);
-        });
-        tabled_song += make_block($.html(elm), annotation_element.html());
+function annotate($, annotations) {
+  if (annotations.length == 0) {
+    return;
+  }
+  let annotations_hash = {};
+  let tabled_song = '';
+  $('body').contents().each(function(i, elm) {
+    if (elm.tagName === 'div') {
+      if ($.html(elm).indexOf('cover_art_id') != -1) {
+        return;
+      }
+      let annotation_id = $(this).attr('annotation_id')
+      invariant(annotations[annotation_id] !== undefined,
+                'We must have the annotation',
+                annotation_id, annotations.length);
+      let annotation_element = cheerio.load(annotations[annotation_id], {decodeEntities: false});
+
+      annotation_element('img').each(function(i, img_el) {
+        let p = annotation_element(img_el);
+        p.attr("style", "display: block; width: 70%; height: auto;");
+        p.removeAttr("width");
+        p.removeAttr("height");
+        annotation_element(this).replaceWith(p);
+      });
+      if (annotation_element.html() in annotations_hash) {
+        tabled_song += make_block($.html(elm));
       } else {
-        if ((['<style>', 'h1', 'h2', 'iframe', 'dfp-ad'].map((x) => $.html(elm).indexOf(x))).some(x => x !== -1)) {
-          return;
-        }
-        if ($.html(elm) == '<br>') {
-          return;
-        }
-        if (/^\s*$/.test($.html(elm))) {
-          return;
-        }
+        tabled_song += make_block($.html(elm), annotation_element.html());
+        annotations_hash[annotation_element.html()] = true;
+      }
+    } else {
+      if ($.html(elm) != '<br>') {
         tabled_song += make_block($.html(elm));
       }
-    });
-    $('body').append('<!-- separator -->')
-    $('body').append('<br>')
-    $('body').append(tabled_song)
-  }
+    }
+  });
+  $('body').append('<!-- separator -->')
+  $('body').append('<br>')
+  $('body').append(tabled_song)
+}
+
+function form_song_output_html(annotations, selected_htmls, cover_art_address) {
+  console.log('do song html', cover_art_address);
+  const author = selected_htmls[0];
+  const title = selected_htmls[1];
+  const lyrics = selected_htmls[2];
+  invariant(lyrics !== undefined, 'Lyrics must exist');
+  const $ = cheerio.load(lyrics, {decodeEntities: false});
+  inject_annotation_ids($);
+  add_header($, title, author, cover_art_address);
+  delete_irrelevant_blocks($);
+  annotate($, annotations);
   return Promise.resolve($.html());
 }
 
 
-module.exports.page_to_html = function(page_url, is_cover_art_needed) {
+module.exports.page_to_html = function(page_url, cover_art_address) {
   let selectors_to_call = [AUTHOR_NAME_SELECTOR, SONG_NAME_SELECTOR, BODY_LYRICS_SELECTOR];
-  if (is_cover_art_needed) {
-    selectors_to_call.push(COVER_ART_SELECTOR);
-  }
 
   let valid_htmls = [];
   return query_inner_htmls(page_url, selectors_to_call, valid_htmls)
     .then(() => module.exports.build_url_list(valid_htmls[2]))
     .then((urls) => store_all_annotations(urls))
-    .then((annotations) => form_song_output_html(annotations, valid_htmls, is_cover_art_needed))
+    .then((annotations) => form_song_output_html(annotations, valid_htmls, cover_art_address))
 };
 
 
@@ -226,4 +237,3 @@ const BODY_LYRICS_SELECTOR = "body > routable-page > ng-outlet > song-page > div
 const AUTHOR_NAME_SELECTOR = "body > routable-page > ng-outlet > song-page > div > div > header-with-cover-art > div > div > div.column_layout-column_span.column_layout-column_span--primary > div.header_with_cover_art-primary_info_container > div > h2 > span > a";
 const SONG_NAME_SELECTOR = "body > routable-page > ng-outlet > song-page > div > div > header-with-cover-art > div > div > div.column_layout-column_span.column_layout-column_span--primary > div.header_with_cover_art-primary_info_container > div > h1";
 const ANNOTATION_SELECTOR = "body > routable-page > ng-outlet > song-page > div > div > div.song_body.column_layout > div.column_layout-column_span.column_layout-column_span--secondary.u-top_margin.column_layout-flex_column > div.column_layout-flex_column-fill_column > annotation-sidebar > div.u-relative.nganimate-fade_slide_from_left > div:nth-child(2) > annotation > standard-rich-content > div";
-const COVER_ART_SELECTOR = "body > routable-page > ng-outlet > song-page > div > div > header-with-cover-art > div > div > div.column_layout-column_span.column_layout-column_span--primary > div.header_with_cover_art-cover_art.show_tiny_edit_button_on_hover > div";

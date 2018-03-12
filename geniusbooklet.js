@@ -38,17 +38,16 @@ make_html_page_break = function() {
 }
 
 
-function build_html_booklet(track_list) {
+function build_html_booklet(track_list, art) {
   console.log('Run in album mode');
   let track_list_with_flags = track_list.map(function(e, i) {
-    return [e, i == 0 ? true : false];
+    return [e, i == 0 ? art : undefined];
   });
   let full_html = "";
-  let page_break = make_html_page_break();
   return track_list_with_flags.reduce((promise, args) => {
     return promise.then(() => process_song.page_to_html.apply(this, args)
                               .then((result) => {  full_html += result;
-                                                   full_html += page_break;
+                                                   full_html += make_html_page_break();
                                                 })
                        );
   }, Promise.resolve())
@@ -68,9 +67,8 @@ function add_last_page(html) {
 function make_booklet(args) {
   let url = args['_'][0];
   let destination = make_destination(args['_']);
-  // b (booklet) print in A6 for nice typographic 
-  let print_format = 'b';
   let mode = args['mode'] != undefined ? args['mode'] : 't';
+  let art_address = args['art'];
   console.log('Booklet will be stored at: ', destination);
 
   if (!(process_song.is_genius_url(url))) {
@@ -79,16 +77,16 @@ function make_booklet(args) {
   url = add_schema_if_needed(url);
   return execute_proper_mode()
     .then(add_last_page)
-    .then((out_html) => render(out_html, destination, print_format))
+    .then((out_html) => render(out_html, destination))
     .then(content_loader.shutdown);
 
   function execute_proper_mode() {
     if (mode == 'a') {
       return parse_track_list(url)
-        .then(build_html_booklet)
+        .then((track_list) => build_html_booklet(track_list, art_address))
     } else {
       console.log('Run in single song mode');
-      return process_song.page_to_html(url, true)
+      return process_song.page_to_html(url, art_address)
         .then((html) => Promise.resolve(
           html + make_html_page_break()));
     }
@@ -96,12 +94,12 @@ function make_booklet(args) {
 }
 
 
-function render(output_html, dst_filepath, print_format) {
+function render(output_html, dst_filepath) {
   fs.writeFileSync(dst_filepath.slice(0, -4) + '.html', output_html);
   let this_page = null;
   return content_loader.load_page('about:blank')
     .then(set_content)
-    .then(sleep.bind(null, 30000))
+    .then(sleep.bind(null, 60000))
     .then(render_pdf)
     .then(close_page);
 
@@ -119,19 +117,12 @@ function render(output_html, dst_filepath, print_format) {
                 landscape: false,
                 scale: 1
                 };
-
-    if (print_format == 'p') {
-      opts.format = 'A4';
-    } else {
       const margin_size = '15mm'
       opts.format = 'A6';
-      //opts.width = '105mm';
-      //opts.height = '148mm';
       opts.margin = {left: margin_size,
                      right: margin_size,
                      top: margin_size,
                      bottom: margin_size};
-    }
     return opts;
   }
 
@@ -146,18 +137,11 @@ function render(output_html, dst_filepath, print_format) {
 
 function main() {
   let arguments_ = minimist(process.argv.slice(2));
-  let is_format_valid = function(args) {
-    const fargs = args['format'];
-    return fargs === undefined ||
-           (fargs.length > 0 && (fargs[0] == 'p' || fargs[0] == 'b')) ||
-           fargs.length === 0;
-  };
 
   if (arguments_.hasOwnProperty('help') ||
       arguments_.hasOwnProperty('?') ||
       arguments_['_'].length === 0  ||
-      arguments_['_'].length > 2 ||
-      !is_format_valid(arguments_)) {
+      arguments_['_'].length > 1) {
     help_message =
       `Usage: geniusbooklet.js <address> [<destination> options]
         address - url of a song or album from Genius.com
@@ -166,6 +150,8 @@ function main() {
         --mode (default t):
           * t Run in track mode; Expect an URL to the track
           * a Run in album mode; Expect an URL to the album
+        --art:
+          * url to an album art to be put on frontpage
       `;
     console.log(help_message);
   } else {
