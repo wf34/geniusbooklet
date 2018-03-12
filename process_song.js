@@ -191,7 +191,8 @@ function annotate($, annotations) {
         annotations_hash[annotation_element.html()] = true;
       }
     } else {
-      if ($.html(elm) != '<br>') {
+      if ($.html(elm) != '<br>' &&
+          (['<h1>', '<h2>'].map((x) => $.html(elm).indexOf(x))).every(x => x === -1)) {
         tabled_song += make_block($.html(elm));
       }
     }
@@ -209,8 +210,8 @@ function form_song_output_html(annotations, selected_htmls, cover_art_address) {
   invariant(lyrics !== undefined, 'Lyrics must exist');
   const $ = cheerio.load(lyrics, {decodeEntities: false});
   inject_annotation_ids($);
-  add_header($, title, author, cover_art_address);
   delete_irrelevant_blocks($);
+  add_header($, title, author, cover_art_address);
   annotate($, annotations);
   return Promise.resolve($.html());
 }
