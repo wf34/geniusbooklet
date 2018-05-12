@@ -1,7 +1,7 @@
 # Genius Booklet
 Study song lyrics & song annotations, commentary and explanatory interpretations
   from [genius.com](https://genius.com) being completely off-line.
-Render them as minimalistic PDFs or print as beatyful booklets, which work great as gifts.
+Render them as minimalistic PDFs or print as beatiful booklets, which work great as gifts.
 The idea behind the project is written up [here](url.to.add).
 
 ## Dependencies:  
